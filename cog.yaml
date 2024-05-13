@@ -1,7 +1,7 @@
 build:
   cuda: "11.0"
   gpu: true
-  python_version: "3.8"
+  python_version: "3.9.0"
   system_packages:
     - "libgl1-mesa-glx"
     - "libglib2.0-0"
@@ -33,8 +33,9 @@ build:
     - "scipy==1.7.1"
     - "six==1.16.0"
     - "tqdm==4.62.3"
-    - "cmake==3.21.3"
+    - "cmake==3.29.2"
   run:
-    - pip install dlib
+    - apt-get update && apt-get -y install cmake
+    - pip3 install dlib
 
 predict: "predict.py:Predictor"
