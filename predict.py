@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import sys
 sys.path.insert(0, "stylegan-encoder")
 import tempfile
@@ -57,13 +58,22 @@ class Predictor(BasePredictor):
         source_image: Path = Input(
             description="Input source image.",
         ),
-        driving_video: Path = Input(
+        driving_video: str = Input(
             description="Choose a micromotion.",
+            default = "assets/nod_5s.mp4",
         ),
         dataset_name: str = Input(
             choices=["vox", "taichi", "ted", "mgif"],
             default="vox",
             description="Choose a dataset.",
+        ),
+        crop_scale: float = Input(
+            description="Set source image scale factor",
+            default=1.0
+        ),
+        crop_offset:float = Input(
+            description="Set cropped image face retangle offset along Y axis",
+            default=0.0
         ),
     ) -> Path:
 
@@ -74,11 +84,20 @@ class Predictor(BasePredictor):
 
         if dataset_name == "vox":
             # first run face alignment
-            align_image(str(source_image), 'aligned.png')
-            source_image = imageio.imread('aligned.png')
+            aligned_img_path = Path(tempfile.mkdtemp()) / 'aligned.png'
+            align_image(str(source_image), str(aligned_img_path), crop_scale=crop_scale, y_offset=crop_offset)
+            source_image = imageio.imread(str(aligned_img_path))
         else:
             source_image = imageio.imread(str(source_image))
-        reader = imageio.get_reader(str(driving_video))
+        
+        file_path = Path(str(driving_video))
+        driving_file_name = file_path.name
+        local_driving_file = Path(f"assets/{driving_file_name}")
+        if local_driving_file.is_file():
+            reader = imageio.get_reader(str(local_driving_file))
+        else:
+            reader = imageio.get_reader(str(driving_video))
+
         fps = reader.get_meta_data()["fps"]
         source_image = resize(source_image, (pixel, pixel))[..., :3]
 
@@ -120,6 +139,6 @@ class Predictor(BasePredictor):
         return out_path
 
 
-def align_image(raw_img_path, aligned_face_path):
+def align_image(raw_img_path, aligned_face_path, crop_scale, y_offset):
     for i, face_landmarks in enumerate(LANDMARKS_DETECTOR.get_landmarks(raw_img_path), start=1):
-        image_align(raw_img_path, aligned_face_path, face_landmarks)
+        image_align(raw_img_path, aligned_face_path, face_landmarks, crop_scale=crop_scale, y_offset=y_offset)
